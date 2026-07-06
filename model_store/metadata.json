@@ -1,0 +1,46 @@
+{
+  "ab2_depths_m": [
+    1,
+    2,
+    3,
+    5,
+    6,
+    8,
+    10,
+    15,
+    20,
+    25,
+    30,
+    35,
+    40,
+    45,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100
+  ],
+  "aquifer_threshold_ohm": 150,
+  "zone_high_ohm": 450,
+  "deep_depth_count": 5,
+  "empirical_depth_range_m": [
+    8.0,
+    15.0
+  ],
+  "lon_ref_deg": 4,
+  "lat_ref_deg": 8,
+  "lat_bounds": [
+    8.466833333333334,
+    8.551333333333334
+  ],
+  "lon_bounds": [
+    4.4635,
+    4.539
+  ],
+  "gp_cv_r2_deepest_depth": -0.14913766480673962,
+  "rf_cv_roc_auc": 1.0,
+  "n_stations": 85,
+  "n_aquifer": 68,
+  "n_basement": 17
+}

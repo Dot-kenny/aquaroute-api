@@ -1,0 +1,9 @@
+*.xlsx
+*.mat
+train_models.py
+frontend.html
+sample_report.pdf
+README.md
+__pycache__/
+*.pyc
+.git/
