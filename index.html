@@ -311,6 +311,119 @@
   .pdf-btn:hover{ background: rgba(47,184,198,0.08); }
   .pdf-btn:disabled{ opacity: .5; cursor:default; }
 
+  /* ── Tabs ───────────────────────────────────────────────── */
+  .tabs{
+    display:flex;
+    gap: 2px;
+    margin-bottom: 16px;
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 3px;
+  }
+  .tab-btn{
+    flex:1;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: 0.3px;
+    padding: 10px;
+    border-radius: 2px;
+    cursor:pointer;
+    transition: background .15s ease, color .15s ease;
+  }
+  .tab-btn.active{
+    background: var(--accent);
+    color: #052226;
+  }
+  .tab-btn:not(.active):hover{ color: var(--text); }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  /* ── Pumping test form ─────────────────────────────────── */
+  .readings-table{
+    margin-top: 6px;
+    display:flex;
+    flex-direction:column;
+    gap: 8px;
+  }
+  .reading-row{
+    display:grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+    align-items:center;
+  }
+  .reading-row input{ font-size: 13px; padding: 8px 10px; }
+  .remove-reading-btn{
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 13px;
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .remove-reading-btn:hover{ border-color: var(--bad); color: var(--bad); }
+  .remove-reading-btn:disabled{ opacity: .3; cursor: default; }
+  .reading-header{
+    display:grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 8px;
+  }
+  .reading-header span{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .add-reading-btn{
+    margin-top: 4px;
+    background: transparent;
+    border: 1px dashed var(--hairline);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    padding: 8px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .add-reading-btn:hover{ border-color: var(--accent-dim); color: var(--accent); }
+
+  .pt-readout-grid{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 4px;
+  }
+  .pt-note{
+    margin-top: 14px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    border-left: 2px solid var(--hairline);
+    padding-left: 11px;
+  }
+  .method-tag{
+    display:inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--panel-raised);
+    border: 1px solid var(--hairline);
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    margin-bottom: 14px;
+  }
+
   footer{
     margin-top: 22px;
     text-align:center;
@@ -330,8 +443,15 @@
 
   <header>
     <div class="wordmark"><span class="dot"></span>AQUAROUTE</div>
-    <div class="tagline">Borehole siting reading — basement complex pilot zone, Ilorin, Kwara State</div>
+    <div class="tagline">Borehole siting &amp; pumping test analysis — basement complex pilot zone, Ilorin, Kwara State</div>
   </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabSiteBtn" type="button">Site a Borehole</button>
+    <button class="tab-btn" id="tabPumpBtn" type="button">Analyze Pumping Test</button>
+  </div>
+
+  <div class="tab-panel active" id="sitePanel">
 
   <div class="panel">
     <div class="field-row">
@@ -398,6 +518,74 @@
     <div class="confidence-note" id="confidenceNote"></div>
 
     <button class="pdf-btn" id="pdfBtn" type="button">Download full PDF report</button>
+  </div>
+
+  </div>
+
+  <div class="tab-panel" id="pumpPanel">
+
+  <div class="panel">
+    <div class="field-row">
+      <div class="field">
+        <label for="pumpRate">Pumping rate (m³/day)</label>
+        <input type="text" id="pumpRate" inputmode="decimal" placeholder="500" />
+      </div>
+      <div class="field">
+        <label for="pumpRadius">Radius to observation point (m)</label>
+        <input type="text" id="pumpRadius" inputmode="decimal" placeholder="45" />
+      </div>
+    </div>
+    <div class="readout-sub" style="margin-top:6px; margin-bottom: 4px;">
+      No separate observation well? Enter the borehole radius instead — transmissivity will still be valid, storativity will be flagged as unreliable rather than guessed.
+    </div>
+
+    <div class="reading-header" style="margin-top:14px;">
+      <span>Time (minutes)</span><span>Drawdown (m)</span><span></span>
+    </div>
+    <div class="readings-table" id="readingsTable"></div>
+    <button class="add-reading-btn" id="addReadingBtn" type="button">+ Add reading</button>
+
+    <button class="submit-btn" id="pumpSubmitBtn" type="button" style="margin-top:16px;">Analyze pumping test</button>
+
+    <div class="loading" id="pumpLoading"><span class="spinner"></span><span>Fitting straight-line analysis…</span></div>
+    <div class="error-box" id="pumpErrorBox"></div>
+  </div>
+
+  <div class="panel" id="pumpResult">
+    <div class="result-header">
+      <h2>Pumping test result</h2>
+    </div>
+    <div class="method-tag">Cooper-Jacob straight-line method — not a machine-learning prediction</div>
+
+    <div class="pt-readout-grid">
+      <div class="readout">
+        <div class="readout-label">Transmissivity</div>
+        <div class="readout-value" id="ptTransmissivity" style="font-size:20px;">—</div>
+        <div class="readout-sub">m² / day</div>
+      </div>
+      <div class="readout">
+        <div class="readout-label">Storativity</div>
+        <div class="readout-value" id="ptStorativity" style="font-size:20px;">—</div>
+        <div class="readout-sub" id="ptStorativitySub"></div>
+      </div>
+    </div>
+
+    <div class="risk-banner" id="ptRiskBanner"></div>
+
+    <div class="station-card" style="border-top:none; padding-top:0;">
+      <div>
+        <div class="sc-label">Fit quality (R²)</div>
+        <div class="sc-value" id="ptRSquared">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sc-label">Readings used</div>
+        <div class="sc-value" id="ptReadingsUsed">—</div>
+      </div>
+    </div>
+
+    <div class="pt-note" id="ptNote"></div>
+  </div>
+
   </div>
 
   <footer>Decision-support tool. Not a guarantee of water. Not an official NGSA product.</footer>
@@ -578,6 +766,146 @@
     $("confidenceNote").textContent = data.model_confidence_note;
 
     result.style.display = "block";
+  }
+
+  // ── Tabs ─────────────────────────────────────────────────────────────
+  const tabSiteBtn = $("tabSiteBtn"), tabPumpBtn = $("tabPumpBtn");
+  const sitePanel = $("sitePanel"), pumpPanel = $("pumpPanel");
+  tabSiteBtn.addEventListener("click", () => {
+    tabSiteBtn.classList.add("active"); tabPumpBtn.classList.remove("active");
+    sitePanel.classList.add("active"); pumpPanel.classList.remove("active");
+  });
+  tabPumpBtn.addEventListener("click", () => {
+    tabPumpBtn.classList.add("active"); tabSiteBtn.classList.remove("active");
+    pumpPanel.classList.add("active"); sitePanel.classList.remove("active");
+  });
+
+  // ── Pumping test: dynamic readings table ────────────────────────────
+  const readingsTable = $("readingsTable");
+  const MIN_READINGS = 4;
+  let readingRowCount = 0;
+
+  function addReadingRow(timeVal = "", drawdownVal = "") {
+    readingRowCount++;
+    const row = document.createElement("div");
+    row.className = "reading-row";
+    row.innerHTML = `
+      <input type="text" inputmode="decimal" class="reading-time" placeholder="e.g. 15" value="${timeVal}" />
+      <input type="text" inputmode="decimal" class="reading-drawdown" placeholder="e.g. 0.35" value="${drawdownVal}" />
+      <button type="button" class="remove-reading-btn" title="Remove reading">×</button>
+    `;
+    row.querySelector(".remove-reading-btn").addEventListener("click", () => {
+      if (readingsTable.children.length > MIN_READINGS) {
+        row.remove();
+        updateRemoveButtonStates();
+      }
+    });
+    readingsTable.appendChild(row);
+    updateRemoveButtonStates();
+  }
+
+  function updateRemoveButtonStates() {
+    const disable = readingsTable.children.length <= MIN_READINGS;
+    readingsTable.querySelectorAll(".remove-reading-btn").forEach(btn => { btn.disabled = disable; });
+  }
+
+  // Pre-fill with a plausible example shape so the form isn't intimidatingly blank
+  const defaultReadings = [
+    ["5", ""], ["15", ""], ["30", ""], ["60", ""],
+  ];
+  defaultReadings.forEach(([t, d]) => addReadingRow(t, d));
+
+  $("addReadingBtn").addEventListener("click", () => addReadingRow());
+
+  // ── Pumping test: submit ────────────────────────────────────────────
+  const pumpSubmitBtn = $("pumpSubmitBtn");
+  const pumpLoading = $("pumpLoading"), pumpErrorBox = $("pumpErrorBox"), pumpResult = $("pumpResult");
+
+  function showPumpError(msg){ pumpErrorBox.textContent = msg; pumpErrorBox.style.display = "block"; }
+  function hidePumpError(){ pumpErrorBox.style.display = "none"; }
+
+  pumpSubmitBtn.addEventListener("click", async () => {
+    const rate = parseFloat($("pumpRate").value);
+    const radius = parseFloat($("pumpRadius").value);
+
+    if (isNaN(rate) || rate <= 0) { showPumpError("Enter a valid pumping rate (m³/day)."); return; }
+    if (isNaN(radius) || radius <= 0) { showPumpError("Enter a valid radius (m)."); return; }
+
+    const rows = [...readingsTable.querySelectorAll(".reading-row")];
+    const readings = [];
+    for (const row of rows) {
+      const t = parseFloat(row.querySelector(".reading-time").value);
+      const d = parseFloat(row.querySelector(".reading-drawdown").value);
+      if (isNaN(t) || t <= 0 || isNaN(d) || d < 0) {
+        showPumpError("Every reading needs a positive time (minutes) and a non-negative drawdown (m).");
+        return;
+      }
+      readings.push({ time_minutes: t, drawdown_m: d });
+    }
+    if (readings.length < MIN_READINGS) {
+      showPumpError(`At least ${MIN_READINGS} readings are needed for a reliable fit.`);
+      return;
+    }
+
+    hidePumpError();
+    pumpResult.style.display = "none";
+    pumpLoading.style.display = "flex";
+    pumpSubmitBtn.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/analyze-pumping-test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pumping_rate_m3_per_day: rate,
+          effective_radius_m: radius,
+          readings: readings,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        const detail = Array.isArray(body.detail) ? body.detail.map(d => d.msg).join("; ") : body.detail;
+        throw new Error(detail || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      renderPumpResult(data);
+    } catch (err) {
+      showPumpError(err.message.includes("fetch")
+        ? "Can't reach the AquaRoute API. Check that it's running and reachable."
+        : err.message);
+    } finally {
+      pumpLoading.style.display = "none";
+      pumpSubmitBtn.disabled = false;
+    }
+  });
+
+  function renderPumpResult(data) {
+    $("ptTransmissivity").textContent = data.transmissivity_m2_per_day.toFixed(2);
+
+    if (data.storativity_reliable && data.storativity !== null) {
+      $("ptStorativity").textContent = data.storativity.toExponential(2);
+      $("ptStorativity").style.color = "var(--good)";
+      $("ptStorativitySub").textContent = "dimensionless";
+    } else {
+      $("ptStorativity").textContent = "N/A";
+      $("ptStorativity").style.color = "var(--text-muted)";
+      $("ptStorativitySub").textContent = "not reliable — see note below";
+    }
+
+    const riskBanner = $("ptRiskBanner");
+    if (!data.storativity_reliable) {
+      riskBanner.className = "risk-banner risk-warn";
+      riskBanner.innerHTML = `<span class="flag-icon">⚠</span><span><b>Storativity not reliable.</b> ${data.storativity_warning || ""}</span>`;
+      riskBanner.style.display = "flex";
+    } else {
+      riskBanner.style.display = "none";
+    }
+
+    $("ptRSquared").textContent = data.fit_r_squared.toFixed(4);
+    $("ptReadingsUsed").textContent = data.n_readings_used;
+    $("ptNote").textContent = data.note;
+
+    pumpResult.style.display = "block";
   }
 </script>
 </body>
