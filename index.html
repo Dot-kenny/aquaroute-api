@@ -1,0 +1,584 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>AquaRoute — Siting Reading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0F1720;
+    --panel: #17212C;
+    --panel-raised: #1D2833;
+    --hairline: #2A3541;
+    --text: #E8EDF2;
+    --text-muted: #8B98A5;
+    --accent: #2FB8C6;
+    --accent-dim: #1E7A83;
+    --good: #2FAE7A;
+    --warn: #D89A3D;
+    --bad: #D9573B;
+    --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Consolas, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --radius: 3px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+  body{
+    padding: 28px 16px 60px;
+    display:flex;
+    justify-content:center;
+  }
+  .wrap{ width:100%; max-width: 560px; }
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header{ margin-bottom: 28px; }
+  .wordmark{
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.5px;
+    color: var(--text);
+    display:flex;
+    align-items:center;
+    gap: 10px;
+  }
+  .wordmark .dot{
+    width:9px; height:9px; border-radius:50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    flex-shrink:0;
+  }
+  .tagline{
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    padding-left: 19px;
+    letter-spacing: 0.2px;
+  }
+
+  /* ── Form panel ─────────────────────────────────────────── */
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 20px;
+  }
+  .panel + .panel{ margin-top: 16px; }
+  .field-row{
+    display:flex;
+    gap:10px;
+  }
+  .field{ flex:1; }
+  label{
+    display:block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="number"]{
+    width:100%;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 15px;
+    padding: 10px 11px;
+    outline: none;
+    transition: border-color .15s ease;
+  }
+  input:focus-visible{
+    border-color: var(--accent);
+  }
+  .locate-btn{
+    margin-top: 12px;
+    width:100%;
+    background: transparent;
+    border: 1px solid var(--hairline);
+    color: var(--text-muted);
+    font-family: var(--sans);
+    font-size: 13px;
+    padding: 9px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .locate-btn:hover{ border-color: var(--accent-dim); color: var(--text); }
+
+  .submit-btn{
+    margin-top: 14px;
+    width:100%;
+    background: var(--accent);
+    border: none;
+    color: #052226;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.4px;
+    padding: 13px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    transition: background .15s ease, opacity .15s ease;
+  }
+  .submit-btn:hover{ background:#3FCBD9; }
+  .submit-btn:disabled{ opacity:.5; cursor:default; }
+
+  .error-box{
+    margin-top: 12px;
+    background: rgba(217,87,59,0.1);
+    border: 1px solid var(--bad);
+    color: #F0B4A4;
+    font-size: 13px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    display:none;
+  }
+
+  /* ── Loading ────────────────────────────────────────────── */
+  .loading{
+    display:none;
+    align-items:center;
+    gap:10px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    margin-top: 14px;
+    letter-spacing: 0.3px;
+  }
+  .spinner{
+    width:13px; height:13px;
+    border-radius:50%;
+    border: 2px solid var(--hairline);
+    border-top-color: var(--accent);
+    animation: spin .7s linear infinite;
+    flex-shrink:0;
+  }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  /* ── Result panel ───────────────────────────────────────── */
+  #result{ display:none; }
+
+  .result-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom: 16px;
+  }
+  .result-header h2{
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .result-coords{
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+  }
+
+  .readout-grid{
+    display:grid;
+    grid-template-columns: 108px 1fr;
+    gap: 18px;
+  }
+  @media (max-width: 420px){
+    .readout-grid{ grid-template-columns: 1fr; }
+    .column-wrap{ display:flex; justify-content:center; }
+  }
+
+  /* Borehole column — the signature element */
+  .column-wrap{ display:flex; flex-direction:column; align-items:center; }
+  .column-label-top, .column-label-bottom{
+    font-family: var(--mono);
+    font-size: 9.5px;
+    color: var(--text-muted);
+  }
+  .column-label-top{ margin-bottom: 4px; }
+  .column-label-bottom{ margin-top: 4px; }
+  svg.column-svg{ display:block; }
+
+  /* Readouts */
+  .readouts{ display:flex; flex-direction:column; gap: 14px; }
+  .readout{ }
+  .readout-label{
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+  .readout-value{
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.1;
+  }
+  .readout-sub{
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .prob-bar-track{
+    margin-top: 7px;
+    height: 6px;
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    overflow:hidden;
+  }
+  .prob-bar-fill{
+    height:100%;
+    transition: width .5s ease;
+  }
+
+  .zone-badge{
+    display:inline-block;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight:600;
+    padding: 4px 9px;
+    border-radius: var(--radius);
+    border: 1px solid var(--hairline);
+    background: var(--panel-raised);
+  }
+
+  /* Risk banner */
+  .risk-banner{
+    margin-top: 18px;
+    padding: 11px 13px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    line-height:1.5;
+    display:flex;
+    gap:9px;
+  }
+  .risk-banner .flag-icon{ flex-shrink:0; margin-top:1px; }
+  .risk-ok{ background: rgba(47,174,122,0.1); border:1px solid var(--good); color:#B7E4CD; }
+  .risk-warn{ background: rgba(217,87,59,0.1); border:1px solid var(--bad); color:#F0B4A4; }
+
+  /* Nearest station card */
+  .station-card{
+    margin-top: 18px;
+    border-top: 1px solid var(--hairline);
+    padding-top: 14px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    font-family: var(--mono);
+    font-size: 12.5px;
+  }
+  .station-card .sc-label{ color: var(--text-muted); font-size:10px; letter-spacing:.6px; text-transform:uppercase; margin-bottom:4px;}
+  .station-card .sc-value{ font-size: 14px; font-weight:600; }
+
+  /* Confidence note */
+  .confidence-note{
+    margin-top: 16px;
+    font-size: 12px;
+    line-height: 1.6;
+    color: var(--text-muted);
+    border-left: 2px solid var(--hairline);
+    padding-left: 11px;
+  }
+
+  .pdf-btn{
+    margin-top: 18px;
+    width:100%;
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-weight:600;
+    font-size: 13px;
+    letter-spacing: 0.4px;
+    padding: 12px;
+    border-radius: var(--radius);
+    cursor:pointer;
+    transition: background .15s ease;
+  }
+  .pdf-btn:hover{ background: rgba(47,184,198,0.08); }
+  .pdf-btn:disabled{ opacity: .5; cursor:default; }
+
+  footer{
+    margin-top: 22px;
+    text-align:center;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .spinner{ animation:none; }
+    .prob-bar-fill{ transition:none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="wordmark"><span class="dot"></span>AQUAROUTE</div>
+    <div class="tagline">Borehole siting reading — basement complex pilot zone, Ilorin, Kwara State</div>
+  </header>
+
+  <div class="panel">
+    <div class="field-row">
+      <div class="field">
+        <label for="lat">Latitude</label>
+        <input type="text" id="lat" inputmode="decimal" placeholder="8.49000" />
+      </div>
+      <div class="field">
+        <label for="lon">Longitude</label>
+        <input type="text" id="lon" inputmode="decimal" placeholder="4.55000" />
+      </div>
+    </div>
+    <button class="locate-btn" id="locateBtn" type="button">Use my current location</button>
+    <button class="submit-btn" id="submitBtn" type="button">Get siting reading</button>
+
+    <div class="loading" id="loading"><span class="spinner"></span><span>Reading site coordinates…</span></div>
+    <div class="error-box" id="errorBox"></div>
+  </div>
+
+  <div class="panel" id="result">
+    <div class="result-header">
+      <h2>Siting reading</h2>
+      <div class="result-coords" id="resultCoords"></div>
+    </div>
+
+    <div class="readout-grid">
+      <div class="column-wrap">
+        <div class="column-label-top">0 m</div>
+        <svg class="column-svg" id="columnSvg" width="64" height="220" viewBox="0 0 64 220"></svg>
+        <div class="column-label-bottom">60 m</div>
+      </div>
+
+      <div class="readouts">
+        <div class="readout">
+          <div class="readout-label">Aquifer probability</div>
+          <div class="readout-value" id="probValue">—</div>
+          <div class="readout-sub" id="probCi"></div>
+          <div class="prob-bar-track"><div class="prob-bar-fill" id="probBar" style="width:0%"></div></div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">Recommended depth</div>
+          <div class="readout-value" id="depthValue">—</div>
+        </div>
+        <div class="readout">
+          <div class="readout-label">Geological zone</div>
+          <div class="zone-badge" id="zoneValue">—</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="risk-banner" id="riskBanner"></div>
+
+    <div class="station-card">
+      <div>
+        <div class="sc-label">Nearest validated station</div>
+        <div class="sc-value" id="stationId">—</div>
+      </div>
+      <div style="text-align:right">
+        <div class="sc-label">Distance / result</div>
+        <div class="sc-value" id="stationDetail">—</div>
+      </div>
+    </div>
+
+    <div class="confidence-note" id="confidenceNote"></div>
+
+    <button class="pdf-btn" id="pdfBtn" type="button">Download full PDF report</button>
+  </div>
+
+  <footer>Decision-support tool. Not a guarantee of water. Not an official NGSA product.</footer>
+</div>
+
+<script>
+  // Point this at your deployed API. Defaults to local dev server.
+  const API_BASE = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:8000"
+    : "https://YOUR-DEPLOYED-API-URL";
+
+  const $ = (id) => document.getElementById(id);
+  const latInput = $("lat"), lonInput = $("lon");
+  const submitBtn = $("submitBtn"), locateBtn = $("locateBtn");
+  const loading = $("loading"), errorBox = $("errorBox"), result = $("result");
+  let lastRequest = null;
+
+  locateBtn.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      showError("Geolocation isn't available in this browser. Enter coordinates manually.");
+      return;
+    }
+    locateBtn.textContent = "Locating…";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        latInput.value = pos.coords.latitude.toFixed(5);
+        lonInput.value = pos.coords.longitude.toFixed(5);
+        locateBtn.textContent = "Use my current location";
+      },
+      () => {
+        locateBtn.textContent = "Use my current location";
+        showError("Couldn't get your location. Enter coordinates manually.");
+      }
+    );
+  });
+
+  submitBtn.addEventListener("click", async () => {
+    const lat = parseFloat(latInput.value);
+    const lon = parseFloat(lonInput.value);
+    if (isNaN(lat) || isNaN(lon)) {
+      showError("Enter a valid latitude and longitude.");
+      return;
+    }
+    hideError();
+    result.style.display = "none";
+    loading.style.display = "flex";
+    submitBtn.disabled = true;
+
+    try {
+      const res = await fetch(`${API_BASE}/predict`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ latitude: lat, longitude: lon }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.detail || `Request failed (${res.status})`);
+      }
+      const data = await res.json();
+      lastRequest = { latitude: lat, longitude: lon };
+      renderResult(data, lastRequest);
+    } catch (err) {
+      showError(err.message.includes("fetch")
+        ? "Can't reach the AquaRoute API. Check that it's running and reachable."
+        : err.message);
+    } finally {
+      loading.style.display = "none";
+      submitBtn.disabled = false;
+    }
+  });
+
+  $("pdfBtn").addEventListener("click", async () => {
+    if (!lastRequest) return;
+    const btn = $("pdfBtn");
+    btn.disabled = true;
+    btn.textContent = "Preparing PDF…";
+    try {
+      const res = await fetch(`${API_BASE}/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(lastRequest),
+      });
+      if (!res.ok) throw new Error("Report generation failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "aquaroute_siting_report.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      showError("Couldn't generate the PDF report. Try again.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Download full PDF report";
+    }
+  });
+
+  function showError(msg){ errorBox.textContent = msg; errorBox.style.display = "block"; }
+  function hideError(){ errorBox.style.display = "none"; }
+
+  function zoneColor(zone){
+    if (zone === "weathered_fractured") return "var(--good)";
+    if (zone === "transition") return "var(--warn)";
+    return "var(--text-muted)";
+  }
+  function zoneLabel(zone){
+    return { weathered_fractured: "Weathered / Fractured", transition: "Transition",
+             fresh_basement: "Fresh Basement" }[zone] || zone;
+  }
+  function probColor(p){
+    if (p >= 0.66) return "var(--good)";
+    if (p >= 0.4) return "var(--warn)";
+    return "var(--bad)";
+  }
+
+  function drawColumn(depthLow, depthHigh, stationDistance, maxDepth=60){
+    const svg = $("columnSvg");
+    const W = 64, H = 220, colX = 22, colW = 20, top = 6, bottom = H - 6;
+    const yFor = (m) => top + (Math.min(m, maxDepth) / maxDepth) * (bottom - top);
+    const bandTop = yFor(depthLow), bandBottom = yFor(depthHigh);
+    const HAIRLINE = "#2A3541", ACCENT = "#2FB8C6", MUTED = "#8B98A5", TEXT = "#E8EDF2";
+
+    svg.innerHTML = `
+      <rect x="${colX}" y="${top}" width="${colW}" height="${bottom-top}"
+            fill="none" stroke="${HAIRLINE}" stroke-width="1.5" rx="2"/>
+      <rect x="${colX}" y="${bandTop}" width="${colW}" height="${Math.max(bandBottom-bandTop,3)}"
+            fill="${ACCENT}" opacity="0.35"/>
+      <rect x="${colX}" y="${bandTop}" width="${colW}" height="${Math.max(bandBottom-bandTop,3)}"
+            fill="none" stroke="${ACCENT}" stroke-width="1.5"/>
+      ${[0,20,40,60].map(m => `
+        <line x1="${colX-4}" y1="${yFor(m)}" x2="${colX}" y2="${yFor(m)}" stroke="${MUTED}" stroke-width="1"/>
+        <text x="${colX-7}" y="${yFor(m)+3}" text-anchor="end" font-size="8" font-family="IBM Plex Mono, monospace" fill="${MUTED}">${m}</text>
+      `).join("")}
+      <text x="${colX+colW/2}" y="${(bandTop+bandBottom)/2 + 3}" text-anchor="middle"
+            font-size="9" font-family="IBM Plex Mono, monospace" font-weight="600" fill="${TEXT}">
+        ${Math.round(depthLow)}\u2013${Math.round(depthHigh)}m
+      </text>
+    `;
+  }
+
+  function renderResult(data, req){
+    $("resultCoords").textContent = `${req.latitude.toFixed(5)}N, ${req.longitude.toFixed(5)}E`;
+
+    const prob = data.aquifer_probability;
+    const [ciLow, ciHigh] = data.confidence_interval;
+    $("probValue").textContent = `${Math.round(prob*100)}%`;
+    $("probValue").style.color = probColor(prob);
+    $("probCi").textContent = `CI ${Math.round(ciLow*100)}–${Math.round(ciHigh*100)}%`;
+    $("probBar").style.width = `${Math.max(prob*100,2)}%`;
+    $("probBar").style.background = probColor(prob);
+
+    const [dLow, dHigh] = data.recommended_depth_range_m;
+    $("depthValue").textContent = `${Math.round(dLow)}–${Math.round(dHigh)} m`;
+
+    $("zoneValue").textContent = zoneLabel(data.geological_zone);
+    $("zoneValue").style.color = zoneColor(data.geological_zone);
+    $("zoneValue").style.borderColor = zoneColor(data.geological_zone);
+
+    drawColumn(dLow, dHigh);
+
+    const riskBanner = $("riskBanner");
+    if (data.risk_flag){
+      riskBanner.className = "risk-banner risk-warn";
+      riskBanner.innerHTML = `<span class="flag-icon">⚠</span><span><b>Low-confidence flag.</b> ${data.risk_reason || ""}</span>`;
+    } else {
+      riskBanner.className = "risk-banner risk-ok";
+      riskBanner.innerHTML = `<span class="flag-icon">✓</span><span>No anomaly detected; location falls within the validated survey coverage area.</span>`;
+    }
+
+    const nearest = data.nearest_validated_station;
+    $("stationId").textContent = nearest.ves_id;
+    $("stationDetail").textContent =
+      `${nearest.distance_km.toFixed(2)} km · ${nearest.aquifer_proxy ? "Aquifer" : "Basement"} · ${nearest.deep_resistivity_ohm.toFixed(0)} Ω·m`;
+
+    $("confidenceNote").textContent = data.model_confidence_note;
+
+    result.style.display = "block";
+  }
+</script>
+</body>
+</html>
