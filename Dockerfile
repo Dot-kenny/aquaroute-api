@@ -6,7 +6,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY api.py report_generator.py ./
+COPY api.py report_generator.py cooper_jacob.py ./
 COPY model_store/ ./model_store/
 
 # Cloud Run sets $PORT at runtime; default 8080 for local `docker run`.

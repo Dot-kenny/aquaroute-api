@@ -46,6 +46,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from report_generator import build_report
+from cooper_jacob import analyze_pumping_test
 
 STORE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_store")
 
@@ -110,6 +111,34 @@ class SiteResponse(BaseModel):
     nearest_validated_station: NearestStation
     in_pilot_coverage_area: bool
     model_confidence_note: str
+
+
+class PumpingTestReadingIn(BaseModel):
+    time_minutes: float = Field(..., gt=0)
+    drawdown_m: float = Field(..., ge=0)
+
+
+class PumpingTestRequest(BaseModel):
+    pumping_rate_m3_per_day: float = Field(..., gt=0, description="Constant discharge rate, Q")
+    effective_radius_m: float = Field(
+        ..., gt=0,
+        description="Distance from pumped well to where drawdown was measured. Use a separate "
+                    "observation well's distance if you have one (needed for a reliable storativity "
+                    "estimate); otherwise use the borehole radius — transmissivity will still be valid, "
+                    "storativity will be flagged as unreliable."
+    )
+    readings: list[PumpingTestReadingIn] = Field(..., min_length=4)
+    early_time_exclude_frac: float = Field(0.3, ge=0, le=0.9)
+
+
+class PumpingTestResponse(BaseModel):
+    transmissivity_m2_per_day: float
+    storativity: float | None
+    storativity_reliable: bool
+    storativity_warning: str
+    fit_r_squared: float
+    n_readings_used: int
+    note: str
 
 
 def haversine_km(lat1, lon1, lat2, lon2):
@@ -231,3 +260,52 @@ def report(req: SiteRequest):
     build_report(prediction, req.dict(), tmp_path)
     return FileResponse(tmp_path, media_type="application/pdf",
                          filename="aquaroute_siting_report.pdf")
+
+
+@app.post("/analyze-pumping-test", response_model=PumpingTestResponse)
+def analyze_pumping_test_endpoint(req: PumpingTestRequest):
+    """
+    Cooper-Jacob straight-line analysis of a pumping test — pure physics,
+    not a trained model. Independent of the siting prediction: this can be
+    run for any well, whether or not AquaRoute was used to site it.
+
+    This is real and usable today. It is NOT the future ML yield model
+    (predicting expected yield for a new site with no pumping test) —
+    that model doesn't exist yet because the training data (15+ real
+    pumping tests) doesn't exist yet. See yield_module/train_yield_model.py.
+    """
+    try:
+        # analyze_pumping_test needs t and Q in matching time units (both
+        # "per day" here, since pumping_rate_m3_per_day is per day) — t0,
+        # and therefore storativity, silently comes out wrong by a factor
+        # of 1440 if time is left in minutes while Q is per day. T is
+        # unaffected (it only depends on the slope of s vs log10(t), which
+        # is invariant to a constant log-shift), which is exactly why this
+        # class of bug is easy to miss: T looks right even when S is wrong.
+        time_days = [r.time_minutes / 1440.0 for r in req.readings]
+        result = analyze_pumping_test(
+            time=time_days,
+            drawdown=[r.drawdown_m for r in req.readings],
+            Q=req.pumping_rate_m3_per_day,
+            r=req.effective_radius_m,
+            early_time_exclude_frac=req.early_time_exclude_frac,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    note = (
+        "Transmissivity is derived directly from this pumping test via the Cooper-Jacob "
+        "straight-line method and is not a machine-learning prediction."
+        if result.storativity_reliable else
+        "Transmissivity is reliable. Storativity is not — see storativity_warning."
+    )
+
+    return PumpingTestResponse(
+        transmissivity_m2_per_day=result.transmissivity,
+        storativity=None if (result.storativity != result.storativity) else result.storativity,  # NaN -> None
+        storativity_reliable=result.storativity_reliable,
+        storativity_warning=result.storativity_warning,
+        fit_r_squared=result.r_squared,
+        n_readings_used=result.n_points_used,
+        note=note,
+    )
