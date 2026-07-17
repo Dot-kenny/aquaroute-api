@@ -95,23 +95,10 @@ VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
 VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
 VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL")
 
+
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
 
-def init_db():
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS siting_readings (
-            id SERIAL PRIMARY KEY,
-            device_id TEXT,
-            latitude DOUBLE PRECISION NOT NULL,
-            longitude DOUBLE PRECISION NOT NULL,
-            aquifer_probability DOUBLE PRECISION,
-            geological_zone TEXT,
-            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-        )
-    """)
 
 def init_db():
     conn = get_db_connection()
@@ -140,7 +127,9 @@ def init_db():
     cur.close()
     conn.close()
 
+
 init_db()
+
 
 class SiteRequest(BaseModel):
     latitude: float = Field(..., ge=-90, le=90, description="WGS84 latitude, decimal degrees")
@@ -150,11 +139,6 @@ class SiteRequest(BaseModel):
 class PushSubscriptionIn(BaseModel):
     endpoint: str
     keys: dict
-
-
-class NearestStation(BaseModel):
-    ves_id: str
-    ...
 
 
 class NearestStation(BaseModel):
@@ -272,9 +256,6 @@ def subscribe(sub: PushSubscriptionIn):
 
 @app.post("/predict", response_model=SiteResponse)
 def predict(req: SiteRequest, request: Request):
-
-@app.post("/predict", response_model=SiteResponse)
-def predict(req: SiteRequest, request: Request):
     lat, lon = req.latitude, req.longitude
 
     in_coverage = (LAT_BOUNDS[0] - 0.2 <= lat <= LAT_BOUNDS[1] + 0.2) and \
@@ -363,13 +344,13 @@ def predict(req: SiteRequest, request: Request):
 
 
 @app.post("/report")
-def report(req: SiteRequest):
+def report(req: SiteRequest, request: Request):
     """
     Runs the same prediction as /predict, then renders it into the 3-page
     PDF siting report and returns the file directly. This is the endpoint
     the pay-per-report flow (Paystack -> GPS coords -> PDF by email) calls.
     """
-    prediction = predict(req).dict()
+    prediction = predict(req, request).dict()
     tmp_path = os.path.join(tempfile.gettempdir(), f"aquaroute_report_{req.latitude}_{req.longitude}.pdf")
     build_report(prediction, req.dict(), tmp_path)
     return FileResponse(tmp_path, media_type="application/pdf",
