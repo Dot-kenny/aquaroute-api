@@ -89,6 +89,30 @@ LON_BOUNDS = META["lon_bounds"]
 # GP was fit with GaussianProcessRegressor(normalize_y=True) wrapped in
 # MultiOutputRegressor -> gp.estimators_[i] gives per-depth predictive std.
 
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL)
+
+def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS siting_readings (
+            id SERIAL PRIMARY KEY,
+            device_id TEXT,
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            aquifer_probability DOUBLE PRECISION,
+            geological_zone TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+init_db()
 
 class SiteRequest(BaseModel):
     latitude: float = Field(..., ge=-90, le=90, description="WGS84 latitude, decimal degrees")
@@ -174,7 +198,26 @@ def root():
 def health():
     return {"status": "ok"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
+
+@app.get("/stats")
+def stats():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT COUNT(*) FROM siting_readings")
+        sites_screened = cur.fetchone()[0]
+        cur.close()
+        conn.close()
+        return {"sites_screened": sites_screened}
+    except Exception as e:
+        return {"sites_screened": None, "error": str(e)}
+
+
+@app.post("/predict", response_model=SiteResponse)
 @app.post("/predict", response_model=SiteResponse)
 def predict(req: SiteRequest):
     lat, lon = req.latitude, req.longitude
@@ -231,6 +274,30 @@ def predict(req: SiteRequest):
         "the driller-validation phase (Month 3-4) supplies real drilling outcomes."
     )
 
+    zone = classify_zone(deep_resistivity_ohm)
+
+    note = (
+        f"GP spatial model 5-fold CV R^2 = {META['gp_cv_r2_deepest_depth']:.2f} on held-out stations "
+        f"({META['n_stations']} stations total). This is a sparse-data interpolation, not a validated "
+        "ground-truth model yet — treat probability as a prioritization score, not a guarantee, until "
+        "the driller-validation phase (Month 3-4) supplies real drilling outcomes."
+    )
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO siting_readings (latitude, longitude, aquifer_probability, geological_zone)
+               VALUES (%s, %s, %s, %s)""",
+            (lat, lon, aquifer_prob, zone)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"Failed to log siting reading: {e}")
+
+    return SiteResponse(
     return SiteResponse(
         aquifer_probability=round(aquifer_prob, 3),
         confidence_interval=[round(ci_low, 3), round(ci_high, 3)],
