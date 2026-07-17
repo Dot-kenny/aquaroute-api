@@ -41,7 +41,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import psycopg2
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
@@ -204,17 +204,17 @@ def stats():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM siting_readings")
-        sites_screened = cur.fetchone()[0]
+        cur.execute("SELECT COUNT(*), COUNT(DISTINCT device_id) FROM siting_readings")
+        total, unique_users = cur.fetchone()
         cur.close()
         conn.close()
-        return {"sites_screened": sites_screened}
+        return {"sites_screened": total, "unique_users": unique_users}
     except Exception as e:
-        return {"sites_screened": None, "error": str(e)}
+        return {"sites_screened": None, "unique_users": None, "error": str(e)}
 
 
 @app.post("/predict", response_model=SiteResponse)
-def predict(req: SiteRequest):
+def predict(req: SiteRequest, request: Request):
     lat, lon = req.latitude, req.longitude
 
     in_coverage = (LAT_BOUNDS[0] - 0.2 <= lat <= LAT_BOUNDS[1] + 0.2) and \
@@ -272,10 +272,11 @@ def predict(req: SiteRequest):
     try:
         conn = get_db_connection()
         cur = conn.cursor()
+        device_id = request.headers.get("X-Device-Id")
         cur.execute(
-            """INSERT INTO siting_readings (latitude, longitude, aquifer_probability, geological_zone)
-               VALUES (%s, %s, %s, %s)""",
-            (lat, lon, aquifer_prob, zone)
+            """INSERT INTO siting_readings (device_id, latitude, longitude, aquifer_probability, geological_zone)
+               VALUES (%s, %s, %s, %s, %s)""",
+            (device_id, lat, lon, aquifer_prob, zone)
         )
         conn.commit()
         cur.close()
