@@ -108,6 +108,35 @@ def init_db():
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """)
+
+    def init_db():
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS siting_readings (
+            id SERIAL PRIMARY KEY,
+            device_id TEXT,
+            latitude DOUBLE PRECISION NOT NULL,
+            longitude DOUBLE PRECISION NOT NULL,
+            aquifer_probability DOUBLE PRECISION,
+            geological_zone TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS push_subscriptions (
+            id SERIAL PRIMARY KEY,
+            endpoint TEXT UNIQUE NOT NULL,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        )
+    """)
+    conn.commit()
+    cur.close()
+    conn.close()
+
+init_db()
     conn.commit()
     cur.close()
     conn.close()
