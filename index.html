@@ -597,7 +597,17 @@
     ? "http://localhost:8000"
     : "https://aquaroute-api.onrender.com";
 
-  const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+
+  function getDeviceId() {
+    let id = localStorage.getItem("aquaroute_device_id");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("aquaroute_device_id", id);
+    }
+    return id;
+  }
+  
   const latInput = $("lat"), lonInput = $("lon");
   const submitBtn = $("submitBtn"), locateBtn = $("locateBtn");
   const loading = $("loading"), errorBox = $("errorBox"), result = $("result");
@@ -635,9 +645,12 @@
     submitBtn.disabled = true;
 
     try {
-      const res = await fetch(`${API_BASE}/predict`, {
+     const res = await fetch(`${API_BASE}/predict`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "X-Device-Id": getDeviceId(),
+        },
         body: JSON.stringify({ latitude: lat, longitude: lon }),
       });
       if (!res.ok) {
