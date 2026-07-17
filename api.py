@@ -40,6 +40,7 @@ import tempfile
 import numpy as np
 import pandas as pd
 import joblib
+import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
