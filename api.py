@@ -41,6 +41,7 @@ import numpy as np
 import pandas as pd
 import joblib
 import psycopg2
+from pywebpush import webpush, WebPushException
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -90,6 +91,9 @@ LON_BOUNDS = META["lon_bounds"]
 # MultiOutputRegressor -> gp.estimators_[i] gives per-depth predictive std.
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+VAPID_CLAIM_EMAIL = os.environ.get("VAPID_CLAIM_EMAIL")
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
@@ -141,6 +145,16 @@ init_db()
 class SiteRequest(BaseModel):
     latitude: float = Field(..., ge=-90, le=90, description="WGS84 latitude, decimal degrees")
     longitude: float = Field(..., ge=-180, le=180, description="WGS84 longitude, decimal degrees")
+
+
+class PushSubscriptionIn(BaseModel):
+    endpoint: str
+    keys: dict
+
+
+class NearestStation(BaseModel):
+    ves_id: str
+    ...
 
 
 class NearestStation(BaseModel):
@@ -236,6 +250,28 @@ def stats():
     except Exception as e:
         return {"sites_screened": None, "unique_users": None, "error": str(e)}
 
+
+@app.post("/subscribe")
+def subscribe(sub: PushSubscriptionIn):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """INSERT INTO push_subscriptions (endpoint, p256dh, auth)
+               VALUES (%s, %s, %s)
+               ON CONFLICT (endpoint) DO NOTHING""",
+            (sub.endpoint, sub.keys.get("p256dh"), sub.keys.get("auth"))
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return {"status": "subscribed"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/predict", response_model=SiteResponse)
+def predict(req: SiteRequest, request: Request):
 
 @app.post("/predict", response_model=SiteResponse)
 def predict(req: SiteRequest, request: Request):
