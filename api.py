@@ -109,7 +109,7 @@ def init_db():
         )
     """)
 
-    def init_db():
+def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
     cur.execute("""
@@ -132,11 +132,6 @@ def init_db():
             created_at TIMESTAMPTZ NOT NULL DEFAULT now()
         )
     """)
-    conn.commit()
-    cur.close()
-    conn.close()
-
-init_db()
     conn.commit()
     cur.close()
     conn.close()
