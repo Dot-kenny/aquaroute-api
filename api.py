@@ -198,10 +198,6 @@ def root():
 def health():
     return {"status": "ok"}
 
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
 
 @app.get("/stats")
 def stats():
@@ -217,7 +213,6 @@ def stats():
         return {"sites_screened": None, "error": str(e)}
 
 
-@app.post("/predict", response_model=SiteResponse)
 @app.post("/predict", response_model=SiteResponse)
 def predict(req: SiteRequest):
     lat, lon = req.latitude, req.longitude
@@ -274,15 +269,6 @@ def predict(req: SiteRequest):
         "the driller-validation phase (Month 3-4) supplies real drilling outcomes."
     )
 
-    zone = classify_zone(deep_resistivity_ohm)
-
-    note = (
-        f"GP spatial model 5-fold CV R^2 = {META['gp_cv_r2_deepest_depth']:.2f} on held-out stations "
-        f"({META['n_stations']} stations total). This is a sparse-data interpolation, not a validated "
-        "ground-truth model yet — treat probability as a prioritization score, not a guarantee, until "
-        "the driller-validation phase (Month 3-4) supplies real drilling outcomes."
-    )
-
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -297,7 +283,6 @@ def predict(req: SiteRequest):
     except Exception as e:
         print(f"Failed to log siting reading: {e}")
 
-    return SiteResponse(
     return SiteResponse(
         aquifer_probability=round(aquifer_prob, 3),
         confidence_interval=[round(ci_low, 3), round(ci_high, 3)],
