@@ -49,6 +49,7 @@ from pydantic import BaseModel, Field
 
 from report_generator import build_report
 from cooper_jacob import analyze_pumping_test
+from monte_carlo import monte_carlo_predict          # NEW
 
 STORE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model_store")
 
@@ -158,7 +159,9 @@ class SiteResponse(BaseModel):
     nearest_validated_station: NearestStation
     in_pilot_coverage_area: bool
     model_confidence_note: str
-
+    zone_stability: dict            # NEW -- e.g. {"weathered_fractured": 0.87, "transition": 0.13}
+    mc_confidence_label: str        # NEW -- "high confidence" / "moderate confidence" / "low confidence..."
+    mc_n_sims: int                  # NEW -- how many draws it ran, for transparency
 
 class PumpingTestReadingIn(BaseModel):
     time_minutes: float = Field(..., gt=0)
@@ -279,11 +282,18 @@ def predict(req: SiteRequest, request: Request):
     scaled_profile = log_scaler.transform(pred_log_profile.reshape(1, -1))
     aquifer_prob = float(rf.predict_proba(scaled_profile)[0, 1])
 
-    # Rough confidence band: widen probability by normalized GP uncertainty
-    uncertainty_frac = float(np.clip(pred_std.mean() / (np.abs(pred_log_profile).mean() + 1e-6), 0, 1))
-    ci_low = max(0.0, aquifer_prob - uncertainty_frac * 0.35)
-    ci_high = min(1.0, aquifer_prob + uncertainty_frac * 0.35)
-
+   
+   # Real confidence band: sample from the GP's own per-depth predictive
+    # distribution, run each sample through the same RF classifier + zone
+    # logic, and take empirical percentiles -- not a hand-tuned constant.
+    mc = monte_carlo_predict(
+        lat=lat, lon=lon,
+        gp=gp, rf=rf, log_scaler=log_scaler, coord_scaler=coord_scaler,
+        deep_depth_count=DEEP_DEPTH_COUNT, classify_zone_fn=classify_zone,
+        iso=iso, pca=pca,
+        n_sims=150,
+    )
+    ci_low, ci_high = mc["aquifer_probability"]["p05"], mc["aquifer_probability"]["p95"]
     # 4. Isolation Forest anomaly flag on PCA-projected interpolated profile
     pca_profile = pca.transform(scaled_profile)
     anomaly_score = iso.decision_function(pca_profile)[0]
@@ -325,7 +335,7 @@ def predict(req: SiteRequest, request: Request):
     except Exception as e:
         print(f"Failed to log siting reading: {e}")
 
-    return SiteResponse(
+   return SiteResponse(
         aquifer_probability=round(aquifer_prob, 3),
         confidence_interval=[round(ci_low, 3), round(ci_high, 3)],
         recommended_depth_range_m=[round(DEPTH_RANGE_M[0], 1), round(DEPTH_RANGE_M[1], 1)],
@@ -340,8 +350,10 @@ def predict(req: SiteRequest, request: Request):
         ),
         in_pilot_coverage_area=in_coverage,
         model_confidence_note=note,
+        zone_stability=mc["zone_stability"],              # NEW
+        mc_confidence_label=mc["confidence_label"],        # NEW
+        mc_n_sims=mc["n_sims"],                            # NEW
     )
-
 
 @app.post("/report")
 def report(req: SiteRequest, request: Request):
