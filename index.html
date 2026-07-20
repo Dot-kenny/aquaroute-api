@@ -506,17 +506,28 @@
     <div class="risk-banner" id="riskBanner"></div>
 
     <div class="station-card">
-      <div>
-        <div class="sc-label">Nearest validated station</div>
-        <div class="sc-value" id="stationId">—</div>
-      </div>
-      <div style="text-align:right">
-        <div class="sc-label">Distance / result</div>
-        <div class="sc-value" id="stationDetail">—</div>
-      </div>
-    </div>
+          <div>
+            <div class="sc-label">Nearest validated station</div>
+            <div class="sc-value" id="stationId">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="sc-label">Distance / result</div>
+            <div class="sc-value" id="stationDetail">—</div>
+          </div>
+        </div>
 
-    <div class="confidence-note" id="confidenceNote"></div>
+        <div class="station-card" id="mcCard" style="border-top:none; padding-top:10px;">
+          <div>
+            <div class="sc-label">Simulated stability</div>
+            <div class="sc-value" id="mcConfidence">—</div>
+          </div>
+          <div style="text-align:right">
+            <div class="sc-label" id="mcZoneLabel">Zone agreement</div>
+            <div class="sc-value" id="mcZoneValue">—</div>
+          </div>
+        </div>
+
+        <div class="confidence-note" id="confidenceNote"></div>
 
     <button class="pdf-btn" id="pdfBtn" type="button">Download full PDF report</button>
   </div>
