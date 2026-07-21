@@ -278,12 +278,11 @@ def predict(req: SiteRequest, request: Request):
     deep_resistivity_ohm = float(10 ** deep_log.mean())
     deep_std_ohm = float(10 ** (deep_log.mean() + pred_std[-DEEP_DEPTH_COUNT:].mean()) - deep_resistivity_ohm)
 
-    # 3. Random Forest aquifer probability, fed the GP's interpolated profile
+   # 3. Random Forest aquifer probability, fed the GP's interpolated profile
     scaled_profile = log_scaler.transform(pred_log_profile.reshape(1, -1))
     aquifer_prob = float(rf.predict_proba(scaled_profile)[0, 1])
 
-   
-   # Real confidence band: sample from the GP's own per-depth predictive
+    # Real confidence band: sample from the GP's own per-depth predictive
     # distribution, run each sample through the same RF classifier + zone
     # logic, and take empirical percentiles -- not a hand-tuned constant.
     mc = monte_carlo_predict(
@@ -294,6 +293,7 @@ def predict(req: SiteRequest, request: Request):
         n_sims=150,
     )
     ci_low, ci_high = mc["aquifer_probability"]["p05"], mc["aquifer_probability"]["p95"]
+
     # 4. Isolation Forest anomaly flag on PCA-projected interpolated profile
     pca_profile = pca.transform(scaled_profile)
     anomaly_score = iso.decision_function(pca_profile)[0]
@@ -332,7 +332,7 @@ def predict(req: SiteRequest, request: Request):
         conn.commit()
         cur.close()
         conn.close()
-   except Exception as e:
+    except Exception as e:
         print(f"Failed to log siting reading: {e}")
 
     return SiteResponse(
@@ -350,9 +350,9 @@ def predict(req: SiteRequest, request: Request):
         ),
         in_pilot_coverage_area=in_coverage,
         model_confidence_note=note,
-        zone_stability=mc["zone_stability"],              # NEW
-        mc_confidence_label=mc["confidence_label"],        # NEW
-        mc_n_sims=mc["n_sims"],                            # NEW
+        zone_stability=mc["zone_stability"],
+        mc_confidence_label=mc["confidence_label"],
+        mc_n_sims=mc["n_sims"],
     )
 
 @app.post("/report")
