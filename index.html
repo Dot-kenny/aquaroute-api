@@ -830,11 +830,24 @@ const $ = (id) => document.getElementById(id);
     $("stationId").textContent = nearest.ves_id;
     $("stationDetail").textContent =
       `${nearest.distance_km.toFixed(2)} km · ${nearest.aquifer_proxy ? "Aquifer" : "Basement"} · ${nearest.deep_resistivity_ohm.toFixed(0)} Ω·m`;
+$("confidenceNote").textContent = data.model_confidence_note;
 
-    $("confidenceNote").textContent = data.model_confidence_note;
+  // Monte Carlo stability block
+  $("mcConfidence").textContent = data.mc_confidence_label;
+  $("mcConfidence").style.color =
+    data.mc_confidence_label === "high confidence" ? "var(--good)" :
+    data.mc_confidence_label === "moderate confidence" ? "var(--warn)" : "var(--bad)";
 
-    result.style.display = "block";
+  const zoneEntries = Object.entries(data.zone_stability || {});
+  if (zoneEntries.length) {
+    const [topZone, topFrac] = zoneEntries.sort((a, b) => b[1] - a[1])[0];
+    $("mcZoneValue").textContent = `${Math.round(topFrac * 100)}% ${zoneLabel(topZone)}`;
+  } else {
+    $("mcZoneValue").textContent = "—";
   }
+
+  result.style.display = "block";
+}
 
   // ── Tabs ─────────────────────────────────────────────────────────────
   const tabSiteBtn = $("tabSiteBtn"), tabPumpBtn = $("tabPumpBtn");
