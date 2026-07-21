@@ -332,10 +332,10 @@ def predict(req: SiteRequest, request: Request):
         conn.commit()
         cur.close()
         conn.close()
-    except Exception as e:
+   except Exception as e:
         print(f"Failed to log siting reading: {e}")
 
-   return SiteResponse(
+    return SiteResponse(
         aquifer_probability=round(aquifer_prob, 3),
         confidence_interval=[round(ci_low, 3), round(ci_high, 3)],
         recommended_depth_range_m=[round(DEPTH_RANGE_M[0], 1), round(DEPTH_RANGE_M[1], 1)],
