@@ -16,4 +16,4 @@ EXPOSE 8080
 CMD ["sh", "-c", "uvicorn api:app --host 0.0.0.0 --port ${PORT}"]
 
 
-Add monte_carlo.py to Docker COPY step
+
