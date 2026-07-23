@@ -416,3 +416,5 @@ def analyze_pumping_test_endpoint(req: PumpingTestRequest):
         n_readings_used=result.n_points_used,
         note=note,
     )
+# TODO: gate this behind Paystack payment verification before public/paid launch.
+# Currently open — acceptable during pre-revenue testing (decided 2026-07-22).
